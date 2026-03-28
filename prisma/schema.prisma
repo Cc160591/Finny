@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  password      String
+  name          String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  accounts      Account[]
+  transactions  Transaction[]
+  categories    Category[]
+  budgets       Budget[]
+  goals         Goal[]
+  assets        Asset[]
+  chatMessages  ChatMessage[]
+}
+
+model Account {
+  id           String          @id @default(cuid())
+  userId       String
+  name         String
+  type         AccountType     @default(CHECKING)
+  balance      Float           @default(0)
+  color        String          @default("#F59E0B")
+  icon         String          @default("wallet")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+}
+
+model Category {
+  id           String          @id @default(cuid())
+  userId       String
+  name         String
+  icon         String          @default("tag")
+  color        String          @default("#F59E0B")
+  type         TransactionType @default(EXPENSE)
+  createdAt    DateTime        @default(now())
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  budgets      Budget[]
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  userId      String
+  accountId   String
+  categoryId  String?
+  amount      Float
+  description String
+  date        DateTime        @default(now())
+  type        TransactionType @default(EXPENSE)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account     Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  userId     String
+  categoryId String
+  amount     Float
+  month      Int
+  year       Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId, month, year])
+}
+
+model Goal {
+  id            String     @id @default(cuid())
+  userId        String
+  name          String
+  description   String?
+  targetAmount  Float
+  currentAmount Float      @default(0)
+  deadline      DateTime?
+  color         String     @default("#F59E0B")
+  icon          String     @default("target")
+  status        GoalStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Asset {
+  id        String    @id @default(cuid())
+  userId    String
+  name      String
+  symbol    String
+  type      AssetType @default(ETF)
+  quantity  Float
+  buyPrice  Float?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AssetPrice {
+  id        String   @id @default(cuid())
+  symbol    String   @unique
+  price     Float
+  currency  String   @default("EUR")
+  updatedAt DateTime @updatedAt
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  userId    String
+  role      MessageRole
+  content   String      @db.Text
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+  CASH
+  CREDIT
+  INVESTMENT
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum GoalStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+}
+
+enum AssetType {
+  ETF
+  STOCK
+  CRYPTO
+  CASH
+  BOND
+  OTHER
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
