@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { openai, AI_SYSTEM_PROMPT } from "@/lib/openai";
+import { getOpenAI, AI_SYSTEM_PROMPT } from "@/lib/openai";
 import { prisma } from "@/lib/prisma";
+import type OpenAI from "openai";
 
-const tools: Parameters<typeof openai.chat.completions.create>[0]["tools"] = [
+const tools: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
     type: "function",
     function: {
@@ -371,7 +372,7 @@ export async function POST(req: NextRequest) {
     take: 20,
   });
 
-  const messages: Parameters<typeof openai.chat.completions.create>[0]["messages"] = [
+  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     { role: "system", content: AI_SYSTEM_PROMPT },
     ...history.slice(0, -1).map((m) => ({
       role: m.role.toLowerCase() as "user" | "assistant",
@@ -385,7 +386,7 @@ export async function POST(req: NextRequest) {
   let currentMessages = [...messages];
 
   for (let i = 0; i < 5; i++) {
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: "gpt-4o",
       messages: currentMessages,
       tools,

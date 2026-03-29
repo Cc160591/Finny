@@ -1,8 +1,13 @@
 import OpenAI from "openai";
 
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let _openai: OpenAI | null = null;
+
+export function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
+}
 
 export const AI_SYSTEM_PROMPT = `Sei Finny, l'assistente AI di questa app di finanza personale.
 Sei ironico, simpatico ma mai pesante. Usi battute leggere e commenti spiritosi sulla gestione del denaro, ma senza esagerare.
