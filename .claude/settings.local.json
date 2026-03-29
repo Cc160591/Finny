@@ -3,7 +3,12 @@
     "allow": [
       "Bash(npx:*)",
       "Bash(sudo chown:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(sed -i '' 's/onValueChange={\\(v\\) => setForm\\({ \\\\.\\\\.\\\\.form, type: v }\\)/onValueChange={\\(v\\) => setForm\\({ ...form, type: v ?? \"\"\"\" }\\)/g' /Users/christiancoli/Desktop/finny/src/components/patrimonio/patrimonio-client.tsx /Users/christiancoli/Desktop/finny/src/components/conti/conti-client.tsx)",
+      "Bash(__NEW_LINE_a06917cb9f2c1d2e__ sed:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
     ]
   }
 }
