@@ -143,7 +143,9 @@ export function ContiClient() {
             <div className="space-y-2">
               <Label>Tipo</Label>
               <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v ?? "" })}>
-                <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue>{TYPE_LABELS[form.type as keyof typeof TYPE_LABELS] ?? form.type}</SelectValue>
+                </SelectTrigger>
                 <SelectContent>
                   {Object.entries(TYPE_LABELS).map(([k, v]) => (
                     <SelectItem key={k} value={k}>{v}</SelectItem>
