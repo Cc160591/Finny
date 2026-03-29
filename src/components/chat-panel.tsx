@@ -61,14 +61,18 @@ export function ChatPanel({ onClose, fullscreen }: ChatPanelProps) {
         body: JSON.stringify({ message: userMsg }),
       });
       const data = await res.json();
+      if (!res.ok || !data.response) {
+        throw new Error(data.error || "Risposta non valida");
+      }
       setMessages((prev) => [
         ...prev,
         { id: Date.now().toString(), role: "assistant", content: data.response },
       ]);
-    } catch {
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "Errore sconosciuto";
       setMessages((prev) => [
         ...prev,
-        { id: Date.now().toString(), role: "assistant", content: "Ops, qualcosa è andato storto. Riprova!" },
+        { id: Date.now().toString(), role: "assistant", content: `Ops! ${errMsg}` },
       ]);
     } finally {
       setLoading(false);

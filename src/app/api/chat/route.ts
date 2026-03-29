@@ -362,63 +362,69 @@ export async function POST(req: NextRequest) {
 
   if (!message?.trim()) return NextResponse.json({ error: "Messaggio vuoto" }, { status: 400 });
 
-  // Salva messaggio utente
-  await prisma.chatMessage.create({ data: { userId, role: "USER", content: message } });
+  try {
+    // Salva messaggio utente
+    await prisma.chatMessage.create({ data: { userId, role: "USER", content: message } });
 
-  // Recupera storico (ultimi 20 messaggi)
-  const history = await prisma.chatMessage.findMany({
-    where: { userId },
-    orderBy: { createdAt: "asc" },
-    take: 20,
-  });
-
-  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: "system", content: AI_SYSTEM_PROMPT },
-    ...history.slice(0, -1).map((m) => ({
-      role: m.role.toLowerCase() as "user" | "assistant",
-      content: m.content,
-    })),
-    { role: "user", content: message },
-  ];
-
-  // Esegui il loop di function calling
-  let finalResponse = "";
-  let currentMessages = [...messages];
-
-  for (let i = 0; i < 5; i++) {
-    const completion = await getOpenAI().chat.completions.create({
-      model: "gpt-4o",
-      messages: currentMessages,
-      tools,
-      tool_choice: "auto",
+    // Recupera storico (ultimi 20 messaggi)
+    const history = await prisma.chatMessage.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+      take: 20,
     });
 
-    const choice = completion.choices[0];
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      { role: "system", content: AI_SYSTEM_PROMPT },
+      ...history.slice(0, -1).map((m) => ({
+        role: m.role.toLowerCase() as "user" | "assistant",
+        content: m.content,
+      })),
+      { role: "user", content: message },
+    ];
 
-    if (choice.finish_reason === "stop" || !choice.message.tool_calls) {
-      finalResponse = choice.message.content ?? "";
-      break;
-    }
+    // Esegui il loop di function calling
+    let finalResponse = "";
+    let currentMessages = [...messages];
 
-    currentMessages.push(choice.message);
-
-    for (const toolCall of choice.message.tool_calls) {
-      if (toolCall.type !== "function") continue;
-      const fn = (toolCall as { type: "function"; function: { name: string; arguments: string }; id: string }).function;
-      const args = JSON.parse(fn.arguments);
-      const result = await executeFunction(fn.name, args, userId);
-      currentMessages.push({
-        role: "tool",
-        tool_call_id: toolCall.id,
-        content: JSON.stringify(result),
+    for (let i = 0; i < 5; i++) {
+      const completion = await getOpenAI().chat.completions.create({
+        model: "gpt-4o",
+        messages: currentMessages,
+        tools,
+        tool_choice: "auto",
       });
+
+      const choice = completion.choices[0];
+
+      if (choice.finish_reason === "stop" || !choice.message.tool_calls) {
+        finalResponse = choice.message.content ?? "";
+        break;
+      }
+
+      currentMessages.push(choice.message);
+
+      for (const toolCall of choice.message.tool_calls) {
+        if (toolCall.type !== "function") continue;
+        const fn = (toolCall as { type: "function"; function: { name: string; arguments: string }; id: string }).function;
+        const args = JSON.parse(fn.arguments);
+        const result = await executeFunction(fn.name, args, userId);
+        currentMessages.push({
+          role: "tool",
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result),
+        });
+      }
     }
+
+    // Salva risposta AI
+    await prisma.chatMessage.create({ data: { userId, role: "ASSISTANT", content: finalResponse } });
+
+    return NextResponse.json({ response: finalResponse });
+  } catch (error) {
+    console.error("[Chat API Error]", error);
+    const msg = error instanceof Error ? error.message : "Errore sconosciuto";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-
-  // Salva risposta AI
-  await prisma.chatMessage.create({ data: { userId, role: "ASSISTANT", content: finalResponse } });
-
-  return NextResponse.json({ response: finalResponse });
 }
 
 export async function GET() {
