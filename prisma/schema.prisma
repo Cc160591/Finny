@@ -21,20 +21,23 @@ model User {
   goals         Goal[]
   assets        Asset[]
   chatMessages  ChatMessage[]
+  tinkToken     TinkToken?
 }
 
 model Account {
-  id           String          @id @default(cuid())
-  userId       String
-  name         String
-  type         AccountType     @default(CHECKING)
-  balance      Float           @default(0)
-  color        String          @default("#F59E0B")
-  icon         String          @default("wallet")
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
+  id            String          @id @default(cuid())
+  userId        String
+  name          String
+  type          AccountType     @default(CHECKING)
+  balance       Float           @default(0)
+  color         String          @default("#F59E0B")
+  icon          String          @default("wallet")
+  tinkAccountId String?         @unique
+  tinkLastSync  DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
 }
 
 model Category {
@@ -51,19 +54,20 @@ model Category {
 }
 
 model Transaction {
-  id          String          @id @default(cuid())
-  userId      String
-  accountId   String
-  categoryId  String?
-  amount      Float
-  description String
-  date        DateTime        @default(now())
-  type        TransactionType @default(EXPENSE)
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account     Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  id                String          @id @default(cuid())
+  userId            String
+  accountId         String
+  categoryId        String?
+  amount            Float
+  description       String
+  date              DateTime        @default(now())
+  type              TransactionType @default(EXPENSE)
+  tinkTransactionId String?         @unique
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account           Account         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category          Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 }
 
 model Budget {
@@ -116,6 +120,17 @@ model AssetPrice {
   price     Float
   currency  String   @default("EUR")
   updatedAt DateTime @updatedAt
+}
+
+model TinkToken {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  accessToken  String   @db.Text
+  refreshToken String   @db.Text
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ChatMessage {

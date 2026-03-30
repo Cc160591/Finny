@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Wallet, CreditCard, Banknote, TrendingUp, Trash2, ArrowLeftRight } from "lucide-react";
+import { Plus, Wallet, CreditCard, Banknote, TrendingUp, Trash2, ArrowLeftRight, Link2, RefreshCw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,9 +11,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { formatEuro } from "@/lib/format";
 import { toast } from "sonner";
+import { useSearchParams } from "next/navigation";
 
 interface Account {
-  id: string; name: string; type: string; balance: number; color: string; icon: string;
+  id: string; name: string; type: string; balance: number; color: string; icon: string; tinkAccountId?: string | null; tinkLastSync?: string | null;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -34,6 +35,9 @@ export function ContiClient() {
   const [form, setForm] = useState({ name: "", type: "CHECKING", balance: "", color: "#F59E0B" });
   const [transferForm, setTransferForm] = useState({ fromAccountId: "", toAccountId: "", amount: "", description: "", date: new Date().toISOString().split("T")[0] });
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState<string | null>(null);
+  const [connectingBank, setConnectingBank] = useState(false);
+  const searchParams = useSearchParams();
 
   const load = useCallback(async () => {
     const res = await fetch("/api/accounts");
@@ -43,6 +47,12 @@ export function ContiClient() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const tink = searchParams.get("tink");
+    if (tink === "success") toast.success("Banca collegata con successo!");
+    else if (tink === "error") toast.error("Errore nel collegamento alla banca");
+  }, [searchParams]);
 
   const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
 
@@ -62,6 +72,40 @@ export function ContiClient() {
       load();
     } else {
       toast.error("Errore durante il salvataggio");
+    }
+  }
+
+  async function handleConnectBank() {
+    setConnectingBank(true);
+    try {
+      const res = await fetch("/api/tink/auth");
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error ?? "Errore");
+      window.location.href = data.url;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Errore";
+      toast.error(`Impossibile collegare la banca: ${msg}`);
+      setConnectingBank(false);
+    }
+  }
+
+  async function handleSync(accountId?: string) {
+    setSyncing(accountId ?? "all");
+    try {
+      const res = await fetch("/api/tink/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accountId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Errore");
+      toast.success(`Sincronizzati ${data.imported} movimenti`);
+      load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Errore";
+      toast.error(msg);
+    } finally {
+      setSyncing(null);
     }
   }
 
@@ -112,7 +156,10 @@ export function ContiClient() {
           <h1 className="text-2xl font-bold">Conti</h1>
           <p className="text-muted-foreground text-sm mt-1">Saldo totale: {formatEuro(totalBalance)}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" className="rounded-xl gap-2" onClick={handleConnectBank} disabled={connectingBank}>
+            <Link2 size={16} />{connectingBank ? "Reindirizzamento..." : "Collega banca"}
+          </Button>
           <Button variant="outline" className="rounded-xl gap-2" onClick={() => setShowTransferDialog(true)} disabled={accounts.length < 2}>
             <ArrowLeftRight size={16} />Trasferimento conto
           </Button>
@@ -151,7 +198,23 @@ export function ContiClient() {
                       <Icon size={20} style={{ color: a.color }} />
                     </div>
                     <div className="flex items-center gap-2">
+                      {a.tinkAccountId && (
+                        <Badge variant="secondary" className="text-xs rounded-lg gap-1 flex items-center" style={{ backgroundColor: "#10B98120", color: "#10B981" }}>
+                          <Link2 size={10} />collegato
+                        </Badge>
+                      )}
                       <Badge variant="secondary" className="text-xs rounded-lg">{TYPE_LABELS[a.type]}</Badge>
+                      {a.tinkAccountId && (
+                        <Button
+                          variant="ghost" size="icon"
+                          className="w-7 h-7 rounded-lg opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary"
+                          onClick={() => handleSync(a.id)}
+                          disabled={syncing === a.id}
+                          title="Sincronizza movimenti"
+                        >
+                          <RefreshCw size={13} className={syncing === a.id ? "animate-spin" : ""} />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost" size="icon"
                         className="w-7 h-7 rounded-lg opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
@@ -163,6 +226,11 @@ export function ContiClient() {
                   </div>
                   <p className="font-semibold text-foreground">{a.name}</p>
                   <p className="text-2xl font-bold mt-1" style={{ color: a.color }}>{formatEuro(a.balance)}</p>
+                  {a.tinkLastSync && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Ultimo sync: {new Date(a.tinkLastSync).toLocaleDateString("it-IT")}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             );
