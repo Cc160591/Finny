@@ -25,7 +25,7 @@ export async function GET() {
     const url = `https://link.tink.com/1.0/transactions/connect-accounts?${params}`;
     return NextResponse.json({ url });
   } catch (err) {
-    console.error("[Tink auth error]", err);
+    console.error("[Tink auth error v3]", err instanceof Error ? err.message : err);
     const msg = err instanceof Error ? err.message : "Errore Tink";
     return NextResponse.json({ error: msg }, { status: 500 });
   }
