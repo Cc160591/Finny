@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Search, Filter } from "lucide-react";
+import { Plus, Trash2, Search, ArrowLeftRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -152,20 +152,26 @@ export function TransazioniClient() {
             </div>
           ) : (
             <div className="divide-y divide-border/50">
-              {filtered.map((tx) => (
+              {filtered.map((tx) => {
+                const isTransfer = tx.description.startsWith("Trasferimento →") || tx.description.startsWith("Trasferimento ←");
+                return (
                 <div key={tx.id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors group">
                   <div className="flex items-center gap-4">
                     <div
                       className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-sm font-semibold"
-                      style={{ backgroundColor: (tx.category?.color ?? tx.account.color) + "25", color: tx.category?.color ?? tx.account.color }}
+                      style={{ backgroundColor: isTransfer ? "#8B5CF625" : (tx.category?.color ?? tx.account.color) + "25", color: isTransfer ? "#8B5CF6" : (tx.category?.color ?? tx.account.color) }}
                     >
-                      {tx.type === "INCOME" ? "↑" : "↓"}
+                      {isTransfer ? <ArrowLeftRight size={16} /> : tx.type === "INCOME" ? "↑" : "↓"}
                     </div>
                     <div>
                       <p className="font-medium text-sm">{tx.description}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-muted-foreground">{tx.account.name}</span>
-                        {tx.category && (
+                        {isTransfer ? (
+                          <Badge variant="secondary" className="text-xs py-0 h-5 rounded-lg" style={{ backgroundColor: "#8B5CF620", color: "#8B5CF6" }}>
+                            Trasferimento
+                          </Badge>
+                        ) : tx.category && (
                           <Badge variant="secondary" className="text-xs py-0 h-5 rounded-lg">
                             {tx.category.name}
                           </Badge>
@@ -177,8 +183,8 @@ export function TransazioniClient() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`font-semibold text-sm ${tx.type === "INCOME" ? "text-emerald-600" : "text-foreground"}`}>
-                      {tx.type === "INCOME" ? "+" : "-"}{formatEuro(tx.amount)}
+                    <span className={`font-semibold text-sm ${isTransfer ? "text-violet-500" : tx.type === "INCOME" ? "text-emerald-600" : "text-foreground"}`}>
+                      {isTransfer ? (tx.description.startsWith("Trasferimento →") ? "-" : "+") : tx.type === "INCOME" ? "+" : "-"}{formatEuro(tx.amount)}
                     </span>
                     <Button
                       variant="ghost"
@@ -190,7 +196,8 @@ export function TransazioniClient() {
                     </Button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

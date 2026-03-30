@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Wallet, CreditCard, Banknote, TrendingUp, Trash2 } from "lucide-react";
+import { Plus, Wallet, CreditCard, Banknote, TrendingUp, Trash2, ArrowLeftRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,9 @@ export function ContiClient() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [form, setForm] = useState({ name: "", type: "CHECKING", balance: "", color: "#F59E0B" });
+  const [transferForm, setTransferForm] = useState({ fromAccountId: "", toAccountId: "", amount: "", description: "", date: new Date().toISOString().split("T")[0] });
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -63,6 +65,40 @@ export function ContiClient() {
     }
   }
 
+  async function handleTransfer(e: React.FormEvent) {
+    e.preventDefault();
+    if (!transferForm.fromAccountId || !transferForm.toAccountId || !transferForm.amount) {
+      toast.error("Compila tutti i campi obbligatori");
+      return;
+    }
+    if (transferForm.fromAccountId === transferForm.toAccountId) {
+      toast.error("I conti devono essere diversi");
+      return;
+    }
+    setSaving(true);
+    const res = await fetch("/api/transfers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fromAccountId: transferForm.fromAccountId,
+        toAccountId: transferForm.toAccountId,
+        amount: parseFloat(transferForm.amount),
+        description: transferForm.description || undefined,
+        date: transferForm.date,
+      }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      toast.success("Trasferimento effettuato!");
+      setShowTransferDialog(false);
+      setTransferForm({ fromAccountId: "", toAccountId: "", amount: "", description: "", date: new Date().toISOString().split("T")[0] });
+      load();
+    } else {
+      const data = await res.json();
+      toast.error(data.error ?? "Errore durante il trasferimento");
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm("Eliminare questo conto? Verranno eliminate anche tutte le transazioni associate.")) return;
     const res = await fetch(`/api/accounts/${id}`, { method: "DELETE" });
@@ -76,9 +112,14 @@ export function ContiClient() {
           <h1 className="text-2xl font-bold">Conti</h1>
           <p className="text-muted-foreground text-sm mt-1">Saldo totale: {formatEuro(totalBalance)}</p>
         </div>
-        <Button className="rounded-xl gap-2" onClick={() => setShowDialog(true)}>
-          <Plus size={16} />Aggiungi conto
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="rounded-xl gap-2" onClick={() => setShowTransferDialog(true)} disabled={accounts.length < 2}>
+            <ArrowLeftRight size={16} />Trasferimento conto
+          </Button>
+          <Button className="rounded-xl gap-2" onClick={() => setShowDialog(true)}>
+            <Plus size={16} />Aggiungi conto
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -128,6 +169,71 @@ export function ContiClient() {
           })}
         </div>
       )}
+
+      <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Trasferimento conto</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleTransfer} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Da conto</Label>
+              <Select value={transferForm.fromAccountId} onValueChange={(v) => setTransferForm({ ...transferForm, fromAccountId: v ?? "" })}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Seleziona conto sorgente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>A conto</Label>
+              <Select value={transferForm.toAccountId} onValueChange={(v) => setTransferForm({ ...transferForm, toAccountId: v ?? "" })}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Seleziona conto destinazione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.filter((a) => a.id !== transferForm.fromAccountId).map((a) => (
+                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Importo (€)</Label>
+              <Input
+                type="number" step="0.01" min="0.01" placeholder="0.00"
+                value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
+                className="rounded-xl" required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Nota (opzionale)</Label>
+              <Input
+                placeholder="es. Ricarica risparmio"
+                value={transferForm.description} onChange={(e) => setTransferForm({ ...transferForm, description: e.target.value })}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Data</Label>
+              <Input
+                type="date" value={transferForm.date} onChange={(e) => setTransferForm({ ...transferForm, date: e.target.value })}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setShowTransferDialog(false)}>Annulla</Button>
+              <Button type="submit" className="flex-1 rounded-xl" disabled={saving}>
+                {saving ? "Trasferimento..." : "Trasferisci"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="rounded-2xl">
