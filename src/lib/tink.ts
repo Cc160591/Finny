@@ -18,9 +18,11 @@ export async function getClientToken(): Promise<string> {
       scope: "authorization:grant",
     }),
   });
-  const data = await res.json();
-  if (!data.access_token) throw new Error(`Tink client token error: ${JSON.stringify(data)}`);
-  return data.access_token;
+  const text = await res.text();
+  let data: Record<string, unknown> = {};
+  try { data = JSON.parse(text); } catch { throw new Error(`Tink risposta non-JSON (${res.status}): ${text.slice(0, 200)}`); }
+  if (!data.access_token) throw new Error(`Tink client token error (${res.status}): ${JSON.stringify(data)}`);
+  return data.access_token as string;
 }
 
 export async function createAuthorizationCode(externalUserId: string, idHint: string): Promise<string> {
