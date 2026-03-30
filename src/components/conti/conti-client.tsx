@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatEuro } from "@/lib/format";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 interface Account {
   id: string; name: string; type: string; balance: number; color: string; icon: string; tinkAccountId?: string | null; tinkLastSync?: string | null;
@@ -27,6 +28,16 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 
 const COLORS = ["#F59E0B", "#EF4444", "#8B5CF6", "#10B981", "#3B82F6", "#F97316", "#EC4899", "#06B6D4"];
 
+function TinkToast() {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const tink = searchParams.get("tink");
+    if (tink === "success") toast.success("Banca collegata con successo!");
+    else if (tink === "error") toast.error("Errore nel collegamento alla banca");
+  }, [searchParams]);
+  return null;
+}
+
 export function ContiClient() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +48,6 @@ export function ContiClient() {
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [connectingBank, setConnectingBank] = useState(false);
-  const searchParams = useSearchParams();
 
   const load = useCallback(async () => {
     const res = await fetch("/api/accounts");
@@ -47,12 +57,6 @@ export function ContiClient() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  useEffect(() => {
-    const tink = searchParams.get("tink");
-    if (tink === "success") toast.success("Banca collegata con successo!");
-    else if (tink === "error") toast.error("Errore nel collegamento alla banca");
-  }, [searchParams]);
 
   const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
 
@@ -151,6 +155,7 @@ export function ContiClient() {
 
   return (
     <div className="space-y-6">
+      <Suspense fallback={null}><TinkToast /></Suspense>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Conti</h1>
