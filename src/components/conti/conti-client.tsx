@@ -83,8 +83,10 @@ export function ContiClient() {
     setConnectingBank(true);
     try {
       const res = await fetch("/api/tink/auth");
-      const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error ?? "Errore");
+      const text = await res.text();
+      let data: { url?: string; error?: string } = {};
+      try { data = JSON.parse(text); } catch { throw new Error(`Risposta non valida (${res.status}): ${text.slice(0, 150)}`); }
+      if (!res.ok || !data.url) throw new Error(data.error ?? "Errore sconosciuto");
       window.location.href = data.url;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Errore";
