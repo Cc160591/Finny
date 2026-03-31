@@ -40,7 +40,7 @@ async function createAuthCode(userId: string, email: string): Promise<string> {
     method: "POST",
     headers: { Authorization: `Bearer ${clientToken}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      actor_client_id: process.env.TINK_CLIENT_ID ?? "",
+      actor_client_id: "df05e4b379934cd09963197cc855bfe9", // Tink Link fixed actor client ID
       external_user_id: userId,
       id_hint: email,
       scope: "accounts:read,balances:read,transactions:read,provider-consents:read",
