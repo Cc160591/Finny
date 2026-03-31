@@ -73,8 +73,6 @@ export async function GET() {
       client_id: clientId,
       redirect_uri: redirectUri,
       authorization_code: code,
-      market: "IT",
-      locale: "it_IT",
     });
     const url = `https://link.tink.com/1.0/transactions/connect-accounts?${params}`;
     return NextResponse.json({ url });
