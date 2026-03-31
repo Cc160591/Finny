@@ -31,18 +31,20 @@ export async function createAuthorizationCode(externalUserId: string, idHint: st
     method: "POST",
     headers: {
       Authorization: `Bearer ${clientToken}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: JSON.stringify({
+    body: new URLSearchParams({
       actor_client_id: getClientId(),
       external_user_id: externalUserId,
       id_hint: idHint,
       scope: "accounts:read,balances:read,transactions:read,provider-consents:read",
     }),
   });
-  const data = await res.json();
-  if (!data.code) throw new Error(`Tink delegate error: ${JSON.stringify(data)}`);
-  return data.code;
+  const text = await res.text();
+  let data: Record<string, unknown> = {};
+  try { data = JSON.parse(text); } catch { throw new Error(`Tink delegate non-JSON (${res.status}): ${text.slice(0, 200)}`); }
+  if (!data.code) throw new Error(`Tink delegate error (${res.status}): ${JSON.stringify(data)}`);
+  return data.code as string;
 }
 
 export async function exchangeCodeForToken(code: string): Promise<{

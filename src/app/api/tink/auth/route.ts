@@ -25,8 +25,8 @@ async function createAuthCode(userId: string, email: string): Promise<string> {
   const clientToken = await getClientToken();
   const res = await fetch(`${TINK_API}/api/v1/oauth/authorization-grant/delegate`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${clientToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
+    headers: { Authorization: `Bearer ${clientToken}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
       actor_client_id: process.env.TINK_CLIENT_ID ?? "",
       external_user_id: userId,
       id_hint: email,
