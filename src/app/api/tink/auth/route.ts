@@ -11,7 +11,7 @@ async function getClientToken(): Promise<string> {
       client_id: process.env.TINK_CLIENT_ID ?? "",
       client_secret: process.env.TINK_CLIENT_SECRET ?? "",
       grant_type: "client_credentials",
-      scope: "authorization:grant",
+      scope: "authorization:grant,user:create",
     }),
   });
   const text = await res.text();
@@ -21,8 +21,21 @@ async function getClientToken(): Promise<string> {
   return data.access_token as string;
 }
 
+async function ensureTinkUser(clientToken: string, userId: string): Promise<void> {
+  const res = await fetch(`${TINK_API}/api/v1/user/create`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${clientToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ external_user_id: userId, market: "IT", locale: "it_IT" }),
+  });
+  if (res.status !== 200 && res.status !== 409) {
+    const text = await res.text();
+    throw new Error(`Tink user create error (${res.status}): ${text.slice(0, 200)}`);
+  }
+}
+
 async function createAuthCode(userId: string, email: string): Promise<string> {
   const clientToken = await getClientToken();
+  await ensureTinkUser(clientToken, userId);
   const res = await fetch(`${TINK_API}/api/v1/oauth/authorization-grant/delegate`, {
     method: "POST",
     headers: { Authorization: `Bearer ${clientToken}`, "Content-Type": "application/x-www-form-urlencoded" },
