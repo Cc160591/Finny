@@ -25,7 +25,7 @@ async function ensureTinkUser(clientToken: string, userId: string): Promise<void
   const res = await fetch(`${TINK_API}/api/v1/user/create`, {
     method: "POST",
     headers: { Authorization: `Bearer ${clientToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ external_user_id: userId, market: "SE", locale: "en_US" }),
+    body: JSON.stringify({ external_user_id: userId, market: "IT", locale: "it_IT" }),
   });
   if (res.status !== 200 && res.status !== 409) {
     const text = await res.text();
