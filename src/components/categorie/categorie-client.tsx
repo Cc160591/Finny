@@ -168,7 +168,7 @@ export function CategorieClient() {
 
             <div className="space-y-2">
               <Label>Tipo</Label>
-              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
+              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v ?? "EXPENSE" })}>
                 <SelectTrigger className="rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
