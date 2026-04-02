@@ -1,25 +1,27 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Wallet, CreditCard, Banknote, TrendingUp, Trash2, ArrowLeftRight, Link2, RefreshCw } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Plus, Wallet, CreditCard, Banknote, TrendingUp, Trash2, ArrowLeftRight, Link2, RefreshCw, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { formatEuro } from "@/lib/format";
 import { toast } from "sonner";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
 interface Account {
-  id: string; name: string; type: string; balance: number; color: string; icon: string; tinkAccountId?: string | null; tinkLastSync?: string | null;
+  id: string; name: string; type: string; balance: number; initialBalance: number; color: string; icon: string; tinkAccountId?: string | null; tinkLastSync?: string | null;
 }
 
 const TYPE_LABELS: Record<string, string> = {
   CHECKING: "Corrente", SAVINGS: "Risparmio", CASH: "Contante", CREDIT: "Carta di credito", INVESTMENT: "Investimento",
+};
+
+const TYPE_CARD_LABELS: Record<string, string> = {
+  CHECKING: "Conto Corrente", SAVINGS: "Conto Risparmio", CASH: "Contanti", CREDIT: "Carta di Credito", INVESTMENT: "Investimento",
 };
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
@@ -27,6 +29,10 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 };
 
 const COLORS = ["#F59E0B", "#EF4444", "#8B5CF6", "#10B981", "#3B82F6", "#F97316", "#EC4899", "#06B6D4"];
+
+function formatBalanceHeader(amount: number): string {
+  return "EUR " + new Intl.NumberFormat("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount);
+}
 
 function TinkToast() {
   const searchParams = useSearchParams();
@@ -43,7 +49,9 @@ export function ContiClient() {
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [editAccount, setEditAccount] = useState<Account | null>(null);
   const [form, setForm] = useState({ name: "", type: "CHECKING", balance: "", color: "#F59E0B" });
+  const [editForm, setEditForm] = useState({ name: "", type: "CHECKING", color: "#F59E0B" });
   const [transferForm, setTransferForm] = useState({ fromAccountId: "", toAccountId: "", amount: "", description: "", date: new Date().toISOString().split("T")[0] });
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState<string | null>(null);
@@ -76,6 +84,30 @@ export function ContiClient() {
       load();
     } else {
       toast.error("Errore durante il salvataggio");
+    }
+  }
+
+  function openEdit(a: Account) {
+    setEditAccount(a);
+    setEditForm({ name: a.name, type: a.type, color: a.color });
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editAccount) return;
+    setSaving(true);
+    const res = await fetch(`/api/accounts/${editAccount.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editForm.name, type: editForm.type, color: editForm.color }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      toast.success("Conto aggiornato!");
+      setEditAccount(null);
+      load();
+    } else {
+      toast.error("Errore durante l'aggiornamento");
     }
   }
 
@@ -179,7 +211,7 @@ export function ContiClient() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-36 bg-muted rounded-2xl animate-pulse" />
+            <div key={i} className="h-52 bg-muted rounded-2xl animate-pulse" />
           ))}
         </div>
       ) : accounts.length === 0 ? (
@@ -194,56 +226,126 @@ export function ContiClient() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {accounts.map((a) => {
             const Icon = TYPE_ICONS[a.type] ?? Wallet;
             return (
-              <Card key={a.id} className="border-border/50 shadow-sm group">
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ backgroundColor: a.color + "25" }}>
-                      <Icon size={20} style={{ color: a.color }} />
+              <div key={a.id} className="rounded-2xl overflow-hidden shadow-md border border-border/30">
+                {/* Colored header */}
+                <div className="relative p-5 overflow-hidden" style={{ backgroundColor: a.color }}>
+                  {/* Decorative circles */}
+                  <div className="absolute -right-8 -top-8 w-32 h-32 rounded-full bg-white/10 pointer-events-none" />
+                  <div className="absolute right-6 bottom-0 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
+
+                  {/* Icon + Name row */}
+                  <div className="relative z-10 flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/20">
+                      <Icon size={20} className="text-white" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      {a.tinkAccountId && (
-                        <Badge variant="secondary" className="text-xs rounded-lg gap-1 flex items-center" style={{ backgroundColor: "#10B98120", color: "#10B981" }}>
-                          <Link2 size={10} />collegato
-                        </Badge>
-                      )}
-                      <Badge variant="secondary" className="text-xs rounded-lg">{TYPE_LABELS[a.type]}</Badge>
-                      {a.tinkAccountId && (
-                        <Button
-                          variant="ghost" size="icon"
-                          className="w-7 h-7 rounded-lg opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary"
-                          onClick={() => handleSync(a.id)}
-                          disabled={syncing === a.id}
-                          title="Sincronizza movimenti"
-                        >
-                          <RefreshCw size={13} className={syncing === a.id ? "animate-spin" : ""} />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost" size="icon"
-                        className="w-7 h-7 rounded-lg opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDelete(a.id)}
+                    <div>
+                      <p className="font-bold text-white text-base leading-tight">{a.name}</p>
+                      <p className="text-white/75 text-sm">{TYPE_CARD_LABELS[a.type] ?? TYPE_LABELS[a.type]}</p>
+                    </div>
+                    {a.tinkAccountId && (
+                      <button
+                        className="ml-auto p-1.5 rounded-lg bg-white/20 hover:bg-white/30 transition-colors"
+                        onClick={() => handleSync(a.id)}
+                        disabled={syncing === a.id}
+                        title="Sincronizza movimenti"
                       >
-                        <Trash2 size={13} />
-                      </Button>
-                    </div>
+                        <RefreshCw size={13} className={`text-white ${syncing === a.id ? "animate-spin" : ""}`} />
+                      </button>
+                    )}
                   </div>
-                  <p className="font-semibold text-foreground">{a.name}</p>
-                  <p className="text-2xl font-bold mt-1" style={{ color: a.color }}>{formatEuro(a.balance)}</p>
-                  {a.tinkLastSync && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Ultimo sync: {new Date(a.tinkLastSync).toLocaleDateString("it-IT")}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+
+                  {/* Balance */}
+                  <div className="relative z-10">
+                    <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">Saldo Attuale</p>
+                    <p className="text-white font-bold text-3xl leading-tight">{formatBalanceHeader(a.balance)}</p>
+                    {a.tinkLastSync && (
+                      <p className="text-white/60 text-xs mt-1">
+                        Sync: {new Date(a.tinkLastSync).toLocaleDateString("it-IT")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* White bottom section */}
+                <div className="px-5 py-4 bg-card">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-muted-foreground text-sm">Saldo iniziale</span>
+                    <span className="font-semibold text-sm" style={{ color: a.color }}>
+                      {formatEuro(a.initialBalance ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="flex-1 flex items-center justify-center gap-2 bg-muted hover:bg-muted/70 rounded-xl py-2.5 text-sm font-semibold text-foreground transition-colors"
+                      onClick={() => openEdit(a)}
+                    >
+                      <Pencil size={13} />Modifica
+                    </button>
+                    <button
+                      className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-destructive hover:bg-destructive/85 rounded-xl text-white transition-colors"
+                      onClick={() => handleDelete(a.id)}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>
       )}
+
+      {/* Edit dialog */}
+      <Dialog open={!!editAccount} onOpenChange={(open) => { if (!open) setEditAccount(null); }}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Modifica conto</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEdit} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Nome conto</Label>
+              <Input placeholder="es. Conto corrente Intesa" value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="rounded-xl" required />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <Select value={editForm.type} onValueChange={(v) => setEditForm({ ...editForm, type: v ?? "" })}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue>{TYPE_LABELS[editForm.type as keyof typeof TYPE_LABELS] ?? editForm.type}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(TYPE_LABELS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Colore</Label>
+              <div className="flex gap-2 flex-wrap">
+                {COLORS.map((c) => (
+                  <button
+                    key={c} type="button"
+                    className={`w-8 h-8 rounded-xl transition-transform ${editForm.color === c ? "scale-110 ring-2 ring-offset-2 ring-foreground/30" : ""}`}
+                    style={{ backgroundColor: c }}
+                    onClick={() => setEditForm({ ...editForm, color: c })}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setEditAccount(null)}>Annulla</Button>
+              <Button type="submit" className="flex-1 rounded-xl" disabled={saving}>
+                {saving ? "Salvataggio..." : "Salva"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showTransferDialog} onOpenChange={setShowTransferDialog}>
         <DialogContent className="rounded-2xl">

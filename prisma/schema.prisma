@@ -29,8 +29,9 @@ model Account {
   userId        String
   name          String
   type          AccountType     @default(CHECKING)
-  balance       Float           @default(0)
-  color         String          @default("#F59E0B")
+  balance        Float           @default(0)
+  initialBalance Float           @default(0)
+  color          String          @default("#F59E0B")
   icon          String          @default("wallet")
   tinkAccountId String?         @unique
   tinkLastSync  DateTime?

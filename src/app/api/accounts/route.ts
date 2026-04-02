@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Dati non validi" }, { status: 400 });
 
   const account = await prisma.account.create({
-    data: { ...parsed.data, userId: session.user.id },
+    data: { ...parsed.data, initialBalance: parsed.data.balance, userId: session.user.id },
   });
 
   return NextResponse.json(account, { status: 201 });
