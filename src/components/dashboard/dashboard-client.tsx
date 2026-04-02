@@ -55,7 +55,7 @@ function StatCard({
 }) {
   return (
     <Card className="border-border/40 shadow-sm overflow-hidden relative">
-      <CardContent className="p-5">
+      <CardContent className="px-5 py-3">
         {/* Decorative blob */}
         <div
           className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-30 pointer-events-none"
@@ -68,7 +68,7 @@ function StatCard({
 
         {/* Icon */}
         <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 relative z-10"
+          className="w-10 h-10 rounded-xl flex items-center justify-center mb-2 relative z-10"
           style={{ backgroundColor: iconBg }}
         >
           <Icon size={18} style={{ color: iconColor }} />
