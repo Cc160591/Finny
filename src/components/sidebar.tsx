@@ -12,6 +12,7 @@ import {
   TrendingUp,
   LogOut,
   MessageSquare,
+  Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/transazioni", icon: ArrowLeftRight, label: "Transazioni" },
   { href: "/conti", icon: Wallet, label: "Conti" },
+  { href: "/categorie", icon: Tag, label: "Categorie" },
   { href: "/budget", icon: PiggyBank, label: "Budget" },
   { href: "/obiettivi", icon: Target, label: "Obiettivi" },
   { href: "/patrimonio", icon: TrendingUp, label: "Patrimonio" },
