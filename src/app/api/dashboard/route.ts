@@ -1,15 +1,19 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
 
   const userId = session.user.id;
+  const { searchParams } = new URL(req.url);
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+  const month = parseInt(searchParams.get("month") ?? String(now.getMonth() + 1));
+  const year = parseInt(searchParams.get("year") ?? String(now.getFullYear()));
+
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0, 23, 59, 59);
 
   const [accounts, monthIncome, monthExpense, recentTx, budgets, goals] = await Promise.all([
     prisma.account.findMany({ where: { userId } }),
@@ -22,16 +26,16 @@ export async function GET() {
       _sum: { amount: true },
     }),
     prisma.transaction.findMany({
-      where: { userId },
+      where: { userId, date: { gte: monthStart, lte: monthEnd } },
       include: {
         account: { select: { name: true, color: true } },
         category: { select: { name: true, color: true, icon: true } },
       },
       orderBy: { date: "desc" },
-      take: 5,
+      take: 8,
     }),
     prisma.budget.findMany({
-      where: { userId, month: now.getMonth() + 1, year: now.getFullYear() },
+      where: { userId, month, year },
       include: { category: { select: { name: true, color: true, icon: true } } },
     }),
     prisma.goal.findMany({
@@ -41,7 +45,6 @@ export async function GET() {
     }),
   ]);
 
-  // Calcola speso per ogni budget
   const budgetsWithSpent = await Promise.all(
     budgets.map(async (b) => {
       const spent = await prisma.transaction.aggregate({
@@ -52,16 +55,19 @@ export async function GET() {
     })
   );
 
-  // Spese ultimi 6 mesi per grafico
+  // Ultimi 6 mesi relativi al mese selezionato
   const last6Months = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
-    return { month: d.getMonth() + 1, year: d.getFullYear(), label: d.toLocaleDateString("it-IT", { month: "short" }) };
+    const d = new Date(year, month - 1 - 5 + i, 1);
+    return {
+      month: d.getMonth() + 1, year: d.getFullYear(),
+      label: d.toLocaleDateString("it-IT", { month: "short", year: "2-digit" }),
+    };
   });
 
   const monthlyData = await Promise.all(
-    last6Months.map(async ({ month, year, label }) => {
-      const start = new Date(year, month - 1, 1);
-      const end = new Date(year, month, 0, 23, 59, 59);
+    last6Months.map(async ({ month: m, year: y, label }) => {
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 0, 23, 59, 59);
       const [inc, exp] = await Promise.all([
         prisma.transaction.aggregate({ where: { userId, type: "INCOME", date: { gte: start, lte: end } }, _sum: { amount: true } }),
         prisma.transaction.aggregate({ where: { userId, type: "EXPENSE", date: { gte: start, lte: end } }, _sum: { amount: true } }),
@@ -70,7 +76,6 @@ export async function GET() {
     })
   );
 
-  // Spese per categoria (mese corrente)
   const categoryExpenses = await prisma.transaction.groupBy({
     by: ["categoryId"],
     where: { userId, type: "EXPENSE", date: { gte: monthStart, lte: monthEnd } },
