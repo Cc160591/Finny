@@ -1,7 +1,28 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import {
+  Plus, Trash2, Pencil, Tag, Shirt, ShoppingCart, Home, Tv, Utensils, Heart,
+  Car, Laptop, TrendingUp, Briefcase, Wallet, Coffee, Plane, Music, Dumbbell,
+  BookOpen, Gamepad2, Zap, Smartphone, Gift, type LucideProps,
+} from "lucide-react";
+
+// Mappa nomi icona lucide → componente (per categorie create prima del picker emoji)
+const LUCIDE_MAP: Record<string, React.ComponentType<LucideProps>> = {
+  tag: Tag, shirt: Shirt, "shopping-cart": ShoppingCart, home: Home, tv: Tv,
+  utensils: Utensils, heart: Heart, car: Car, laptop: Laptop,
+  "trending-up": TrendingUp, briefcase: Briefcase, wallet: Wallet,
+  coffee: Coffee, plane: Plane, music: Music, dumbbell: Dumbbell,
+  book: BookOpen, gamepad: Gamepad2, gamepad2: Gamepad2, zap: Zap,
+  smartphone: Smartphone, gift: Gift,
+};
+
+function CategoryIcon({ icon, color }: { icon: string; color: string }) {
+  const LucideIcon = LUCIDE_MAP[icon.toLowerCase()];
+  if (LucideIcon) return <LucideIcon size={18} style={{ color }} />;
+  // emoji o testo generico
+  return <span className="text-lg leading-none">{icon}</span>;
+}
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,10 +114,10 @@ export function CategorieClient() {
                 className="flex items-center gap-3 p-4 rounded-2xl border border-border/50 bg-card shadow-sm group"
               >
                 <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                   style={{ backgroundColor: c.color + "25" }}
                 >
-                  {c.icon}
+                  <CategoryIcon icon={c.icon} color={c.color} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{c.name}</p>
